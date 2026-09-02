@@ -115,7 +115,7 @@ function render() {
     render();
   }));
   app.querySelectorAll("[data-edit-student]").forEach((button) => button.addEventListener("click", () => { state.modal = { type: "student", id: Number(button.dataset.editStudent) }; render(); }));
-  app.querySelector("#modal-form")?.addEventListener("submit", (event) => {
+  app.querySelector("#modal-form")?.addEventListener("submit", async (event) => {
     event.preventDefault(); const data = Object.fromEntries(new FormData(event.currentTarget));
     if (state.modal.type === "student") {
       const entry = { name: data.name, subject: data.subject, rate: Number(data.rate), notes: data.notes || "" };

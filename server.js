@@ -70,7 +70,7 @@ const server = http.createServer(async (request, response) => {
     }
     if (request.method === "PUT" && url.pathname.startsWith("/api/students/")) {
       const database = readDatabase();
-      const student = database.students.find((item) => item.id === url.pathname.split("/").pop());
+      const student = database.students.find((item) => String(item.id) === url.pathname.split("/").pop());
       if (!student) return send(response, 404, { error: "Ученик не найден" });
       const input = await getBody(request);
       Object.assign(student, { name: String(input.name || "").trim(), subject: String(input.subject || "").trim(), rate: Number(input.rate), notes: String(input.notes || "").trim() });
@@ -95,4 +95,4 @@ const server = http.createServer(async (request, response) => {
     send(response, 500, { error: "Внутренняя ошибка сервера" });
   }
 });
-server.listen(PORT, () => console.log(`Репет запущен: http://localhost:${PORT}`));
+server.listen(PORT, "0.0.0.0", () => console.log(`Репет запущен: http://0.0.0.0:${PORT}`));
