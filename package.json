@@ -1,0 +1,9 @@
+{
+  "name": "repet",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tutor scheduling application",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
