@@ -40,7 +40,7 @@ function login() {
       <div id="login-error" class="error"></div><button class="button primary">Войти</button>
     </form>
   </section></main>`;
-  document.querySelector("#login-form").addEventListener("submit", (event) => {
+  document.querySelector("#login-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     try {
       await api("/api/login", { method: "POST", body: JSON.stringify({ phone: document.querySelector("#phone").value, password: document.querySelector("#password").value }) });
