@@ -294,7 +294,7 @@ function adminPage() {
               <div class="person-avatar">${esc(student.initials)}</div>
               <div>
                 <div class="person-name">${esc(student.name)}</div>
-                <div class="person-meta">${esc(student.grade ? student.grade + ' · ' : '')}${esc(student.subject)} · ${money(student.rate)}/час<br/>Логин: ${esc(student.login)}${student.telegram ? ' · ' + esc(student.telegram) : ''}</div>
+                <div class="person-meta">${esc(student.grade ? student.grade + ' · ' : '')}${esc(student.subject)} · ${money(student.rate)}/час<br/>Логин: ${esc(student.login)}${student.telegram ? ' · ' + esc(student.telegram) : ''}<br/>Репетитор: ${esc(seed.tutors.find(t => t.id === student.tutorId)?.name || 'Не привязан')}</div>
               </div>
             </div>
             <div style="display:flex;gap:8px;">
@@ -351,6 +351,11 @@ function modal() {
           <form class="form" id="modal-form">
             <input type="hidden" name="type" value="user" />
             <input type="hidden" name="role" value="${type}" />
+            ${type === 'student' && seed.user.role === 'admin' ? `
+              <div class="field"><label>Привязать к репетитору</label><select name="tutorId" required>
+                ${seed.tutors.map(t => `<option value="${t.id}" ${user?.tutorId === t.id ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}
+              </select></div>
+            ` : ''}
             <div class="field"><label>Имя и фамилия</label><input name="name" required value="${esc(user?.name || "")}" placeholder="Иван Иванов" /></div>
             <div class="field"><label>Логин для входа</label><input name="login" value="${esc(user?.login || "")}" placeholder="Например, ivan_2026" /></div>
             <div class="field">
@@ -441,7 +446,10 @@ function render() {
       const data = Object.fromEntries(new FormData(event.currentTarget));
       if (data.type === "user") {
         const entry = { name: data.name, login: data.login, password: data.password, role: data.role, notes: data.notes };
-        if (data.role === "student") { entry.subject = data.subject; entry.telegram = data.telegram; entry.grade = data.grade; entry.rate = data.rate; }
+        if (data.role === "student") { 
+          entry.subject = data.subject; entry.telegram = data.telegram; entry.grade = data.grade; entry.rate = data.rate; 
+          if (data.tutorId) entry.tutorId = data.tutorId;
+        }
         if (state.modal.id) await api(`/api/users/${state.modal.id}`, { method: "PUT", body: JSON.stringify(entry) });
         else await api("/api/users", { method: "POST", body: JSON.stringify(entry) });
       } else if (data.type === "lesson") {

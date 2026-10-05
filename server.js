@@ -11,11 +11,11 @@ function defaultDatabase() {
   return {
     users: [
       { id: "1", login: "+79376419123", password: "Itsjoke775", name: "Гарифуллин Карим", initials: "ГК", role: "admin" },
-      { id: "2", login: "", password: "", name: "Николай", initials: "Н", role: "student", subject: "", rate: 1500, notes: "" },
-      { id: "3", login: "", password: "", name: "Ксения", initials: "К", role: "student", subject: "", rate: 1200, notes: "" },
-      { id: "4", login: "", password: "", name: "Маша", initials: "М", role: "student", subject: "", rate: 1500, notes: "" },
-      { id: "5", login: "", password: "", name: "Роман", initials: "Р", role: "student", subject: "", rate: 1500, notes: "" },
-      { id: "6", login: "", password: "", name: "Тимофей", initials: "Т", role: "student", subject: "", rate: 1500, notes: "" }
+      { id: "2", login: "", password: "", name: "Николай", initials: "Н", role: "student", tutorId: "1", subject: "", rate: 1500, notes: "" },
+      { id: "3", login: "", password: "", name: "Ксения", initials: "К", role: "student", tutorId: "1", subject: "", rate: 1200, notes: "" },
+      { id: "4", login: "", password: "", name: "Маша", initials: "М", role: "student", tutorId: "1", subject: "", rate: 1500, notes: "" },
+      { id: "5", login: "", password: "", name: "Роман", initials: "Р", role: "student", tutorId: "1", subject: "", rate: 1500, notes: "" },
+      { id: "6", login: "", password: "", name: "Тимофей", initials: "Т", role: "student", tutorId: "1", subject: "", rate: 1500, notes: "" }
     ],
     lessons: []
   };
@@ -55,7 +55,7 @@ const server = http.createServer(async (request, response) => {
       const user = database.users.find(u => u.id === userId);
       if (!user) return send(response, 401, { error: "Не авторизован" });
       
-      const students = database.users.filter(u => u.role === "student");
+      let students = database.users.filter(u => u.role === "student");
       const tutors = database.users.filter(u => u.role === "tutor" || u.role === "admin");
       let lessons = database.lessons;
       
@@ -63,6 +63,7 @@ const server = http.createServer(async (request, response) => {
         lessons = lessons.filter(l => l.studentId === user.id);
       } else if (user.role === "tutor") {
         lessons = lessons.filter(l => l.tutorId === user.id);
+        students = students.filter(s => s.tutorId === user.id);
       }
       
       return send(response, 200, { 
@@ -96,6 +97,7 @@ const server = http.createServer(async (request, response) => {
         name: String(input.name || "").trim(), 
         initials: initials(input.name),
         role: input.role || "student",
+        tutorId: input.role === "student" ? (creator.role === "admin" && input.tutorId ? String(input.tutorId) : creator.id) : undefined,
         subject: input.role === "student" ? String(input.subject || "").trim() : undefined, 
         telegram: input.role === "student" ? String(input.telegram || "").trim() : undefined,
         grade: input.role === "student" ? String(input.grade || "").trim() : undefined,
@@ -121,6 +123,7 @@ const server = http.createServer(async (request, response) => {
       if (input.login) user.login = String(input.login).trim();
       if (input.password) user.password = String(input.password).trim();
       if (user.role === "student") {
+        if (input.tutorId) user.tutorId = String(input.tutorId);
         user.subject = String(input.subject || "").trim();
         user.telegram = String(input.telegram || "").trim();
         user.grade = String(input.grade || "").trim();
