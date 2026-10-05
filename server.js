@@ -9,16 +9,16 @@ const PUBLIC_FILES = { "/": "index.html", "/index.html": "index.html", "/styles.
 
 function defaultDatabase() {
   return {
-    users: [{ id: "1", phone: "+79991234567", password: "demo", name: "Алексей", initials: "АК" }],
-    students: [
-      { id: "1", name: "Алина Смирнова", subject: "Математика", rate: 1800, notes: "" },
-      { id: "2", name: "Михаил Волков", subject: "Английский язык", rate: 1500, notes: "" },
-      { id: "3", name: "София Ким", subject: "Физика", rate: 2000, notes: "" }
+    users: [
+      { id: "1", phone: "+79376419123", password: "Itsjoke775", name: "Алексей (Мастер)", initials: "АК", role: "admin" },
+      { id: "2", phone: "+79990000001", password: "demo", name: "Мария (Репетитор)", initials: "МР", role: "tutor" },
+      { id: "3", phone: "+79990000002", password: "demo", name: "Алина Смирнова", initials: "АС", role: "student", subject: "Математика", rate: 1800, notes: "" },
+      { id: "4", phone: "+79990000003", password: "demo", name: "Михаил Волков", initials: "МВ", role: "student", subject: "Английский язык", rate: 1500, notes: "" }
     ],
     lessons: [
-      { id: "1", studentId: "1", date: "2026-09-02", time: "10:00", duration: "1 час", held: true, paid: true },
-      { id: "2", studentId: "2", date: "2026-09-02", time: "14:00", duration: "45 минут", held: true, paid: false },
-      { id: "3", studentId: "3", date: "2026-09-04", time: "16:00", duration: "2 часа", held: false, paid: false }
+      { id: "1", tutorId: "1", studentId: "3", date: "2026-09-02", time: "10:00", duration: "1 час", held: true, paid: true },
+      { id: "2", tutorId: "2", studentId: "4", date: "2026-09-02", time: "14:00", duration: "45 минут", held: true, paid: false },
+      { id: "3", tutorId: "1", studentId: "3", date: "2026-09-04", time: "16:00", duration: "2 часа", held: false, paid: false }
     ]
   };
 }
@@ -46,53 +46,130 @@ function getBody(request) {
   });
 }
 function id() { return crypto.randomUUID(); }
+function initials(name) { return String(name || "").split(" ").map(p => p[0]).slice(0,2).join("").toUpperCase(); }
 
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   try {
     if (request.method === "GET" && url.pathname === "/api/state") {
+      const userId = url.searchParams.get("userId");
       const database = readDatabase();
-      return send(response, 200, { students: database.students, lessons: database.lessons });
+      const user = database.users.find(u => u.id === userId);
+      if (!user) return send(response, 401, { error: "Не авторизован" });
+      
+      const students = database.users.filter(u => u.role === "student");
+      const tutors = database.users.filter(u => u.role === "tutor" || u.role === "admin");
+      let lessons = database.lessons;
+      
+      if (user.role === "student") {
+        lessons = lessons.filter(l => l.studentId === user.id);
+      } else if (user.role === "tutor") {
+        lessons = lessons.filter(l => l.tutorId === user.id);
+      }
+      
+      return send(response, 200, { 
+        students, 
+        tutors, 
+        lessons, 
+        users: user.role === "admin" ? database.users : undefined 
+      });
     }
+
     if (request.method === "POST" && url.pathname === "/api/login") {
       const { phone, password } = await getBody(request);
       const database = readDatabase();
       const normalizedPhone = String(phone || "").replace(/\D/g, "");
       const user = database.users.find((item) => item.phone.replace(/\D/g, "") === normalizedPhone && item.password === password);
-      return user ? send(response, 200, { user: { name: user.name, initials: user.initials } }) : send(response, 401, { error: "Неверный номер телефона или пароль" });
+      return user ? send(response, 200, { user: { id: user.id, name: user.name, initials: user.initials, role: user.role } }) : send(response, 401, { error: "Неверный номер телефона или пароль" });
     }
-    if (request.method === "POST" && url.pathname === "/api/students") {
+
+    if (request.method === "POST" && url.pathname === "/api/users") {
       const database = readDatabase();
       const input = await getBody(request);
-      const student = { id: id(), name: String(input.name || "").trim(), subject: String(input.subject || "").trim(), rate: Number(input.rate), notes: String(input.notes || "").trim() };
-      if (!student.name || !student.subject || !Number.isFinite(student.rate) || student.rate < 0) return send(response, 400, { error: "Проверьте данные ученика" });
-      database.students.push(student); writeDatabase(database); return send(response, 201, student);
+      // Only admin or tutor can create users (tutors usually create students)
+      const creatorId = url.searchParams.get("userId");
+      const creator = database.users.find(u => u.id === creatorId);
+      if (!creator || creator.role === "student") return send(response, 403, { error: "Нет прав" });
+      if (input.role !== "student" && creator.role !== "admin") return send(response, 403, { error: "Только администратор может создавать репетиторов" });
+
+      const user = { 
+        id: id(), 
+        phone: String(input.phone || "").trim(),
+        password: String(input.password || "").trim(),
+        name: String(input.name || "").trim(), 
+        initials: initials(input.name),
+        role: input.role || "student",
+        subject: input.role === "student" ? String(input.subject || "").trim() : undefined, 
+        rate: input.role === "student" ? Number(input.rate) : undefined, 
+        notes: String(input.notes || "").trim() 
+      };
+      if (!user.name || !user.phone || !user.password) return send(response, 400, { error: "Заполните обязательные поля" });
+      
+      database.users.push(user); 
+      writeDatabase(database); 
+      return send(response, 201, user);
     }
-    if (request.method === "PUT" && url.pathname.startsWith("/api/students/")) {
+
+    if (request.method === "PUT" && url.pathname.startsWith("/api/users/")) {
       const database = readDatabase();
-      const student = database.students.find((item) => String(item.id) === url.pathname.split("/").pop());
-      if (!student) return send(response, 404, { error: "Ученик не найден" });
+      const userIdToEdit = url.pathname.split("/").pop();
+      const user = database.users.find((item) => item.id === userIdToEdit);
+      if (!user) return send(response, 404, { error: "Пользователь не найден" });
+      
       const input = await getBody(request);
-      Object.assign(student, { name: String(input.name || "").trim(), subject: String(input.subject || "").trim(), rate: Number(input.rate), notes: String(input.notes || "").trim() });
-      writeDatabase(database); return send(response, 200, student);
+      user.name = String(input.name || "").trim();
+      user.initials = initials(user.name);
+      if (input.phone) user.phone = String(input.phone).trim();
+      if (input.password) user.password = String(input.password).trim();
+      if (user.role === "student") {
+        user.subject = String(input.subject || "").trim();
+        user.rate = Number(input.rate);
+      }
+      user.notes = String(input.notes || "").trim();
+      
+      writeDatabase(database); 
+      return send(response, 200, user);
     }
+
+    if (request.method === "DELETE" && url.pathname.startsWith("/api/users/")) {
+      const database = readDatabase();
+      const creatorId = url.searchParams.get("userId");
+      const creator = database.users.find(u => u.id === creatorId);
+      if (!creator || creator.role !== "admin") return send(response, 403, { error: "Нет прав" });
+
+      const userIdToDelete = url.pathname.split("/").pop();
+      database.users = database.users.filter(u => u.id !== userIdToDelete);
+      database.lessons = database.lessons.filter(l => l.studentId !== userIdToDelete && l.tutorId !== userIdToDelete);
+      
+      writeDatabase(database);
+      return send(response, 200, { success: true });
+    }
+
     if (request.method === "POST" && url.pathname === "/api/lessons") {
       const database = readDatabase();
       const input = await getBody(request);
       const studentId = String(input.studentId);
-      if (!database.students.some((student) => String(student.id) === studentId)) return send(response, 400, { error: "Ученик не найден" });
-      const lesson = { id: id(), studentId, date: String(input.date), time: String(input.time), duration: String(input.duration), held: Boolean(input.held), paid: Boolean(input.paid) };
-      database.lessons.push(lesson); writeDatabase(database); return send(response, 201, lesson);
+      const tutorId = String(url.searchParams.get("userId") || input.tutorId);
+      
+      if (!database.users.some((u) => u.id === studentId && u.role === "student")) return send(response, 400, { error: "Ученик не найден" });
+      
+      const lesson = { id: id(), tutorId, studentId, date: String(input.date), time: String(input.time), duration: String(input.duration), held: Boolean(input.held), paid: Boolean(input.paid) };
+      database.lessons.push(lesson); 
+      writeDatabase(database); 
+      return send(response, 201, lesson);
     }
+
     if (request.method === "GET" && PUBLIC_FILES[url.pathname]) {
       const file = path.join(__dirname, PUBLIC_FILES[url.pathname]);
       const type = file.endsWith(".css") ? "text/css; charset=utf-8" : file.endsWith(".js") ? "text/javascript; charset=utf-8" : "text/html; charset=utf-8";
       return send(response, 200, fs.readFileSync(file), type);
     }
+    
     send(response, 404, { error: "Not found" });
   } catch (error) {
     console.error(error);
     send(response, 500, { error: "Внутренняя ошибка сервера" });
   }
 });
+
 server.listen(PORT, "0.0.0.0", () => console.log(`Репет запущен: http://0.0.0.0:${PORT}`));
