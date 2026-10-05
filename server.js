@@ -9,16 +9,16 @@ const PUBLIC_FILES = { "/": "index.html", "/index.html": "index.html", "/styles.
 
 function defaultDatabase() {
   return {
-    users: [{ id: 1, phone: "+79991234567", password: "demo", name: "Алексей", initials: "АК" }],
+    users: [{ id: "1", phone: "+79991234567", password: "demo", name: "Алексей", initials: "АК" }],
     students: [
-      { id: 1, name: "Алина Смирнова", subject: "Математика", rate: 1800, notes: "" },
-      { id: 2, name: "Михаил Волков", subject: "Английский язык", rate: 1500, notes: "" },
-      { id: 3, name: "София Ким", subject: "Физика", rate: 2000, notes: "" }
+      { id: "1", name: "Алина Смирнова", subject: "Математика", rate: 1800, notes: "" },
+      { id: "2", name: "Михаил Волков", subject: "Английский язык", rate: 1500, notes: "" },
+      { id: "3", name: "София Ким", subject: "Физика", rate: 2000, notes: "" }
     ],
     lessons: [
-      { id: 1, studentId: 1, date: "2026-09-02", time: "10:00", duration: "1 час", held: true, paid: true },
-      { id: 2, studentId: 2, date: "2026-09-02", time: "14:00", duration: "45 минут", held: true, paid: false },
-      { id: 3, studentId: 3, date: "2026-09-04", time: "16:00", duration: "2 часа", held: false, paid: false }
+      { id: "1", studentId: "1", date: "2026-09-02", time: "10:00", duration: "1 час", held: true, paid: true },
+      { id: "2", studentId: "2", date: "2026-09-02", time: "14:00", duration: "45 минут", held: true, paid: false },
+      { id: "3", studentId: "3", date: "2026-09-04", time: "16:00", duration: "2 часа", held: false, paid: false }
     ]
   };
 }
@@ -79,8 +79,8 @@ const server = http.createServer(async (request, response) => {
     if (request.method === "POST" && url.pathname === "/api/lessons") {
       const database = readDatabase();
       const input = await getBody(request);
-      const studentId = typeof input.studentId === "string" ? Number(input.studentId) : input.studentId;
-      if (!database.students.some((student) => student.id === studentId)) return send(response, 400, { error: "Ученик не найден" });
+      const studentId = String(input.studentId);
+      if (!database.students.some((student) => String(student.id) === studentId)) return send(response, 400, { error: "Ученик не найден" });
       const lesson = { id: id(), studentId, date: String(input.date), time: String(input.time), duration: String(input.duration), held: Boolean(input.held), paid: Boolean(input.paid) };
       database.lessons.push(lesson); writeDatabase(database); return send(response, 201, lesson);
     }
