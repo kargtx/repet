@@ -429,7 +429,7 @@ function render() {
       const data = Object.fromEntries(new FormData(event.currentTarget));
       if (state.modal.type === "student") {
         const entry = { name: data.name, subject: data.subject, rate: Number(data.rate), notes: data.notes || "" };
-        if (state.modal.id) await api(\`/api/students/\${state.modal.id}\`, { method: "PUT", body: JSON.stringify(entry) });
+        if (state.modal.id) await api(`/api/students/${state.modal.id}`, { method: "PUT", body: JSON.stringify(entry) });
         else await api("/api/students", { method: "POST", body: JSON.stringify(entry) });
       } else {
         await api("/api/lessons", { method: "POST", body: JSON.stringify({ 
@@ -455,9 +455,9 @@ function render() {
 function downloadCalendar() {
   const events = seed.lessons.map((lesson) => { 
     const student = seed.students.find((s) => s.id === lesson.studentId); 
-    return \`BEGIN:VEVENT\\nSUMMARY:Урок — \${student?.name}\\nDTSTART:\${lesson.date.replaceAll("-", "")}T\${lesson.time.replace(":", "")}00\\nDURATION:PT60M\\nEND:VEVENT\`; 
-  }).join("\\n");
-  const blob = new Blob([\`BEGIN:VCALENDAR\\nVERSION:2.0\\n\${events}\\nEND:VCALENDAR\`], { type: "text/calendar" });
+    return `BEGIN:VEVENT\nSUMMARY:Урок — ${student?.name}\nDTSTART:${lesson.date.replaceAll("-", "")}T${lesson.time.replace(":", "")}00\nDURATION:PT60M\nEND:VEVENT`; 
+  }).join("\n");
+  const blob = new Blob([`BEGIN:VCALENDAR\nVERSION:2.0\n${events}\nEND:VCALENDAR`], { type: "text/calendar" });
   const link = document.createElement("a"); 
   link.href = URL.createObjectURL(blob); 
   link.download = "repet-schedule.ics"; 
@@ -466,5 +466,5 @@ function downloadCalendar() {
 }
 
 save().then(render).catch((error) => { 
-  app.innerHTML = \`<main class="login"><section class="login-card"><h1>Сервер недоступен</h1><p class="sub">\${esc(error.message)}<br />Убедитесь, что сервер запущен.</p></section></main>\`; 
+  app.innerHTML = `<main class="login"><section class="login-card"><h1>Сервер недоступен</h1><p class="sub">${esc(error.message)}<br />Убедитесь, что сервер запущен.</p></section></main>`; 
 });
