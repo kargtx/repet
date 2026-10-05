@@ -1,4 +1,4 @@
-const API_BASE = "http://167.17.177.242:3100";
+const API_BASE = "";
 
 const initTheme = () => {
   const theme = localStorage.getItem('theme') || 'light';
