@@ -334,3 +334,26 @@ h2 { margin: 0; font-size: 22px; letter-spacing: -0.03em; font-weight: 700; }
 [data-theme="dark"] .field label {
   color: #f0f2f8;
 }
+
+[data-theme="dark"] .modal {
+  background: var(--surface);
+}
+
+[data-theme="dark"] .mobile-lesson-card.green,
+[data-theme="dark"] .mobile-lesson-card.orange {
+  background: var(--surface);
+}
+
+[data-theme="dark"] .mobile-lesson-time {
+  color: #f0f2f8;
+}
+
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] .person-name,
+[data-theme="dark"] .price,
+[data-theme="dark"] .lesson-name,
+[data-theme="dark"] .stat-value {
+  color: #f0f2f8;
+}
