@@ -34,7 +34,8 @@ const save = async () => {
 
 const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
 const money = (value) => `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
-const today = "2026-09-02"; // Mocked today
+const todayObj = new Date();
+const today = new Date(todayObj.getTime() - (todayObj.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
 const formatDate = (value) => new Date(`${value}T12:00:00`).toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
 
 function login() {
@@ -125,9 +126,21 @@ function layout(content) {
 }
 
 function calendarPage() {
-  const days = ["Пн", "Вт", "Сегодня", "Чт", "Пт", "Сб", "Вс"];
-  const dates = ["2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-05", "2026-09-06"];
-  const datesDisplay = ["31", "1", "2", "3", "4", "5", "6"];
+  let dayOfWeek = todayObj.getDay() || 7;
+  const monday = new Date(todayObj);
+  monday.setDate(todayObj.getDate() - dayOfWeek + 1);
+  const days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+  const dates = [];
+  const datesDisplay = [];
+  const monthNames = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const dateStr = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
+    dates.push(dateStr);
+    datesDisplay.push(d.getDate().toString());
+    if (dateStr === today) days[i] = "Сегодня";
+  }
   const hours = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
   const isTutor = seed.user.role === "tutor" || seed.user.role === "admin";
 
@@ -179,7 +192,7 @@ function calendarPage() {
         if (dayLessons.length === 0) return '';
         return `
           <div class="mobile-day">
-            <h3 class="mobile-day-title ${date === today ? 'is-today' : ''}">${days[index]}, ${datesDisplay[index]} сентября</h3>
+            <h3 class="mobile-day-title ${date === today ? 'is-today' : ''}">${days[index]}, ${datesDisplay[index]} ${monthNames[new Date(date).getMonth()]}</h3>
             <div class="mobile-lessons">
               ${dayLessons.map(lesson => `
                   <div class="mobile-lesson-card ${lesson.paid ? 'green' : 'orange'}">

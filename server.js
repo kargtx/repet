@@ -10,16 +10,14 @@ const PUBLIC_FILES = { "/": "index.html", "/index.html": "index.html", "/styles.
 function defaultDatabase() {
   return {
     users: [
-      { id: "1", phone: "+79376419123", password: "Itsjoke775", name: "Алексей (Мастер)", initials: "АК", role: "admin" },
-      { id: "2", phone: "+79990000001", password: "demo", name: "Мария (Репетитор)", initials: "МР", role: "tutor" },
-      { id: "3", phone: "+79990000002", password: "demo", name: "Алина Смирнова", initials: "АС", role: "student", subject: "Математика", rate: 1800, notes: "" },
-      { id: "4", phone: "+79990000003", password: "demo", name: "Михаил Волков", initials: "МВ", role: "student", subject: "Английский язык", rate: 1500, notes: "" }
+      { id: "1", phone: "+79376419123", password: "Itsjoke775", name: "Гарифуллин Карим", initials: "ГК", role: "admin" },
+      { id: "2", phone: "", password: "", name: "Николай", initials: "Н", role: "student", subject: "", rate: 1500, notes: "" },
+      { id: "3", phone: "", password: "", name: "Ксения", initials: "К", role: "student", subject: "", rate: 1200, notes: "" },
+      { id: "4", phone: "", password: "", name: "Маша", initials: "М", role: "student", subject: "", rate: 1500, notes: "" },
+      { id: "5", phone: "", password: "", name: "Роман", initials: "Р", role: "student", subject: "", rate: 1500, notes: "" },
+      { id: "6", phone: "", password: "", name: "Тимофей", initials: "Т", role: "student", subject: "", rate: 1500, notes: "" }
     ],
-    lessons: [
-      { id: "1", tutorId: "1", studentId: "3", date: "2026-09-02", time: "10:00", duration: "1 час", held: true, paid: true },
-      { id: "2", tutorId: "2", studentId: "4", date: "2026-09-02", time: "14:00", duration: "45 минут", held: true, paid: false },
-      { id: "3", tutorId: "1", studentId: "3", date: "2026-09-04", time: "16:00", duration: "2 часа", held: false, paid: false }
-    ]
+    lessons: []
   };
 }
 
