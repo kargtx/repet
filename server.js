@@ -78,8 +78,15 @@ const server = http.createServer(async (request, response) => {
     if (request.method === "POST" && url.pathname === "/api/login") {
       const { phone, password } = await getBody(request);
       const database = readDatabase();
-      const normalizedPhone = String(phone || "").replace(/\D/g, "");
-      const user = database.users.find((item) => item.phone.replace(/\D/g, "") === normalizedPhone && item.password === password);
+      let normalizedPhone = String(phone || "").replace(/\D/g, "");
+      if (normalizedPhone.length === 11 && normalizedPhone.startsWith("8")) {
+        normalizedPhone = "7" + normalizedPhone.slice(1);
+      }
+      const user = database.users.find((item) => {
+        let itemPhone = item.phone.replace(/\D/g, "");
+        if (itemPhone.length === 11 && itemPhone.startsWith("8")) itemPhone = "7" + itemPhone.slice(1);
+        return itemPhone === normalizedPhone && item.password === password;
+      });
       return user ? send(response, 200, { user: { id: user.id, name: user.name, initials: user.initials, role: user.role } }) : send(response, 401, { error: "Неверный номер телефона или пароль" });
     }
 
@@ -100,6 +107,8 @@ const server = http.createServer(async (request, response) => {
         initials: initials(input.name),
         role: input.role || "student",
         subject: input.role === "student" ? String(input.subject || "").trim() : undefined, 
+        telegram: input.role === "student" ? String(input.telegram || "").trim() : undefined,
+        grade: input.role === "student" ? String(input.grade || "").trim() : undefined,
         rate: input.role === "student" ? Number(input.rate) : undefined, 
         notes: String(input.notes || "").trim() 
       };
@@ -123,6 +132,8 @@ const server = http.createServer(async (request, response) => {
       if (input.password) user.password = String(input.password).trim();
       if (user.role === "student") {
         user.subject = String(input.subject || "").trim();
+        user.telegram = String(input.telegram || "").trim();
+        user.grade = String(input.grade || "").trim();
         user.rate = Number(input.rate);
       }
       user.notes = String(input.notes || "").trim();

@@ -233,7 +233,7 @@ function studentsPage() {
     <section class="card">
       <div class="section-head">
         <h2>Мои ученики <span class="muted-count">(${seed.students.length})</span></h2>
-        ${seed.user.role === 'admin' ? '<button class="button primary small" data-action="add-student">＋ Новый ученик</button>' : ''}
+        ${seed.user.role === 'admin' || seed.user.role === 'tutor' ? '<button class="button primary small" data-action="add-student">＋ Новый ученик</button>' : ''}
       </div>
       <div class="list">
         ${seed.students.length > 0 ? seed.students.map((student) => `
@@ -242,7 +242,7 @@ function studentsPage() {
               <div class="person-avatar">${esc(student.initials)}</div>
               <div>
                 <div class="person-name">${esc(student.name)}</div>
-                <div class="person-meta">${esc(student.subject)} · ${money(student.rate)}/час · Тел: ${esc(student.phone)}</div>
+                <div class="person-meta">${esc(student.grade ? student.grade + ' · ' : '')}${esc(student.subject)} · ${money(student.rate)}/час<br/>Тел: ${esc(student.phone)}${student.telegram ? ' · ' + esc(student.telegram) : ''}</div>
               </div>
             </div>
             <button class="button ghost small action-btn" data-edit-user="${student.id}">Изменить</button>
@@ -290,7 +290,7 @@ function adminPage() {
               <div class="person-avatar">${esc(student.initials)}</div>
               <div>
                 <div class="person-name">${esc(student.name)}</div>
-                <div class="person-meta">${esc(student.subject)} · ${money(student.rate)}/час · Тел: ${esc(student.phone)}</div>
+                <div class="person-meta">${esc(student.grade ? student.grade + ' · ' : '')}${esc(student.subject)} · ${money(student.rate)}/час<br/>Тел: ${esc(student.phone)}${student.telegram ? ' · ' + esc(student.telegram) : ''}</div>
               </div>
             </div>
             <div style="display:flex;gap:8px;">
@@ -392,6 +392,8 @@ function modal() {
               </div>
             </div>
             ${type === 'student' ? `
+              <div class="field"><label>Ник в ТГ</label><input name="telegram" value="${esc(user?.telegram || "")}" placeholder="@username" /></div>
+              <div class="field"><label>Класс</label><input name="grade" value="${esc(user?.grade || "")}" placeholder="Например, 11 класс" /></div>
               <div class="field"><label>Предмет</label><input name="subject" required value="${esc(user?.subject || "")}" placeholder="Математика" /></div>
               <div class="field"><label>Ставка за час, ₽</label><input name="rate" required type="number" min="0" value="${user?.rate || ""}" /></div>
             ` : ''}
@@ -464,7 +466,7 @@ function render() {
       const data = Object.fromEntries(new FormData(event.currentTarget));
       if (data.type === "user") {
         const entry = { name: data.name, phone: data.phone, password: data.password, role: data.role, notes: data.notes };
-        if (data.role === "student") { entry.subject = data.subject; entry.rate = data.rate; }
+        if (data.role === "student") { entry.subject = data.subject; entry.telegram = data.telegram; entry.grade = data.grade; entry.rate = data.rate; }
         
         if (state.modal.id) await api(`/api/users/${state.modal.id}`, { method: "PUT", body: JSON.stringify(entry) });
         else await api("/api/users", { method: "POST", body: JSON.stringify(entry) });
