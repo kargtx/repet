@@ -357,3 +357,15 @@ h2 { margin: 0; font-size: 22px; letter-spacing: -0.03em; font-weight: 700; }
 [data-theme="dark"] .stat-value {
   color: #f0f2f8;
 }
+
+.is-today-cell {
+  background: var(--primary-light) !important;
+  border: 1px solid var(--primary) !important;
+}
+
+[data-theme="dark"] .is-today-cell {
+  background: rgba(109, 93, 252, 0.2) !important;
+}
+
+.shadow-hover { transition: transform 0.1s, box-shadow 0.1s; }
+.shadow-hover:hover { transform: translateY(-1px); filter: brightness(1.05); box-shadow: var(--shadow-sm); }

@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3100;
 const DATA_FILE = path.join(__dirname, "data", "database.json");
 const PUBLIC_FILES = { "/": "index.html", "/index.html": "index.html", "/styles.css": "styles.css", "/app.js": "app.js" };
 
@@ -28,11 +28,19 @@ function readDatabase() {
   }
   return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
 }
+
 function writeDatabase(database) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(database, null, 2));
 }
+
 function send(response, status, body, contentType = "application/json; charset=utf-8") {
-  response.writeHead(status, { "Content-Type": contentType, "Cache-Control": "no-store" });
+  response.writeHead(status, {
+    "Content-Type": contentType,
+    "Cache-Control": "no-store",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  });
   response.end(contentType.startsWith("application/json") ? JSON.stringify(body) : body);
 }
 function getBody(request) {
@@ -49,6 +57,8 @@ function initials(name) { return String(name || "").split(" ").map(p => p[0]).sl
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   try {
+    if (request.method === "OPTIONS") return send(response, 200, {});
+    
     if (request.method === "GET" && url.pathname === "/api/state") {
       const userId = url.searchParams.get("userId");
       const database = readDatabase();
@@ -157,10 +167,37 @@ const server = http.createServer(async (request, response) => {
       
       if (!database.users.some((u) => u.id === studentId && u.role === "student")) return send(response, 400, { error: "Ученик не найден" });
       
-      const lesson = { id: id(), tutorId, studentId, date: String(input.date), time: String(input.time), duration: String(input.duration), held: Boolean(input.held), paid: Boolean(input.paid) };
-      database.lessons.push(lesson); 
+      const repeatWeeks = input.repeatWeeks ? Math.max(1, Math.min(12, Number(input.repeatWeeks))) : 1;
+      const created = [];
+      
+      for (let i = 0; i < repeatWeeks; i++) {
+        const d = new Date(input.date);
+        d.setDate(d.getDate() + (i * 7));
+        const dateStr = d.toISOString().split("T")[0];
+        const lesson = { id: id(), tutorId, studentId, date: dateStr, time: String(input.time), duration: String(input.duration), held: Boolean(input.held), paid: Boolean(input.paid) };
+        database.lessons.push(lesson);
+        created.push(lesson);
+      }
+      
       writeDatabase(database); 
-      return send(response, 201, lesson);
+      return send(response, 201, created[0]);
+    }
+
+    if (request.method === "PUT" && url.pathname.startsWith("/api/lessons/")) {
+      const database = readDatabase();
+      const lessonId = url.pathname.split("/").pop();
+      const lesson = database.lessons.find((item) => item.id === lessonId);
+      if (!lesson) return send(response, 404, { error: "Урок не найден" });
+      
+      const input = await getBody(request);
+      if (input.date !== undefined) lesson.date = String(input.date);
+      if (input.time !== undefined) lesson.time = String(input.time);
+      if (input.duration !== undefined) lesson.duration = String(input.duration);
+      if (input.held !== undefined) lesson.held = Boolean(input.held);
+      if (input.paid !== undefined) lesson.paid = Boolean(input.paid);
+      
+      writeDatabase(database);
+      return send(response, 200, lesson);
     }
 
     if (request.method === "GET" && PUBLIC_FILES[url.pathname]) {
