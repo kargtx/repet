@@ -164,7 +164,7 @@ function calendarPage() {
     dates.push(dateStr); datesDisplay.push(d.getDate().toString());
     if (dateStr === today) days[i] = "Сегодня";
   }
-  const hours = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
+  const hours = ["15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00"];
   const isTutor = seed.user.role === "tutor" || seed.user.role === "admin";
   const diff = getTzOffset() - 3; // base is MSK (3)
 

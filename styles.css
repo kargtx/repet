@@ -320,3 +320,17 @@ h2 { margin: 0; font-size: 22px; letter-spacing: -0.03em; font-weight: 700; }
 [data-theme="dark"] .button.ghost:hover {
   background: rgba(255, 255, 255, 0.1);
 }
+
+[data-theme="dark"] .field input:focus, 
+[data-theme="dark"] .field select:focus, 
+[data-theme="dark"] .field textarea:focus {
+  background: #252e40; /* Slightly lighter than the base #1b2330, but still dark */
+  color: #f0f2f8;
+}
+
+[data-theme="dark"] .login-card h1, 
+[data-theme="dark"] .login-card .sub,
+[data-theme="dark"] .login-card label,
+[data-theme="dark"] .field label {
+  color: #f0f2f8;
+}
