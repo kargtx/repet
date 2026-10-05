@@ -461,7 +461,13 @@ function modal() {
                 </select>
               </div>
             ` : ''}
-            <div class="form-actions"><button type="button" class="button ghost" data-action="close">Отмена</button><button class="button primary" ${!studentOptions ? 'disabled' : ''}>${isEdit?'Сохранить':'Добавить'}</button></div>
+            <div class="form-actions">
+              ${isEdit ? `<button type="button" class="button danger ghost" data-delete-lesson="${lesson.id}">Удалить</button>` : ''}
+              <div style="display:flex; gap:8px; margin-left:auto;">
+                <button type="button" class="button ghost" data-action="close">Отмена</button>
+                <button class="button primary" ${!studentOptions ? 'disabled' : ''}>${isEdit?'Сохранить':'Добавить'}</button>
+              </div>
+            </div>
           </form>
         </section>
       </div>`;
@@ -574,6 +580,11 @@ function render() {
   app.querySelectorAll("[data-delete-user]").forEach((button) => button.addEventListener("click", async () => { 
     if (!confirm("Вы уверены? Удалятся и все уроки.")) return;
     try { await api(`/api/users/${button.dataset.deleteUser}`, { method: "DELETE" }); await save(); render(); } catch (e) { alert(e.message); }
+  }));
+
+  app.querySelectorAll("[data-delete-lesson]").forEach((button) => button.addEventListener("click", async () => { 
+    if (!confirm("Удалить этот урок?")) return;
+    try { await api(`/api/lessons/${button.dataset.deleteLesson}`, { method: "DELETE" }); await save(); state.modal = null; render(); } catch (e) { alert(e.message); }
   }));
 
   if (seed.user.role !== "student") {

@@ -200,6 +200,16 @@ const server = http.createServer(async (request, response) => {
       return send(response, 200, lesson);
     }
 
+    if (request.method === "DELETE" && url.pathname.startsWith("/api/lessons/")) {
+      const database = readDatabase();
+      const lessonId = url.pathname.split("/").pop();
+      if (!database.lessons.some(l => l.id === lessonId)) return send(response, 404, { error: "Урок не найден" });
+      
+      database.lessons = database.lessons.filter(l => l.id !== lessonId);
+      writeDatabase(database);
+      return send(response, 200, { success: true });
+    }
+
     if (request.method === "GET" && PUBLIC_FILES[url.pathname]) {
       const file = path.join(__dirname, PUBLIC_FILES[url.pathname]);
       const type = file.endsWith(".css") ? "text/css; charset=utf-8" : file.endsWith(".js") ? "text/javascript; charset=utf-8" : "text/html; charset=utf-8";
