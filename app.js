@@ -1,10 +1,32 @@
-const seed = {
-  user: null, // { id, name, initials, role }
-  students: [],
-  tutors: [],
-  users: [], // only for admin
-  lessons: []
+const initTheme = () => {
+  const theme = localStorage.getItem('theme') || 'light';
+  if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
 };
+initTheme();
+
+const tzOffsets = {
+  "Калининград (UTC+2)": 2,
+  "Москва (UTC+3)": 3,
+  "Самара (UTC+4)": 4,
+  "Екатеринбург (UTC+5)": 5,
+  "Омск (UTC+6)": 6,
+  "Красноярск (UTC+7)": 7,
+  "Иркутск (UTC+8)": 8,
+  "Якутск (UTC+9)": 9,
+  "Владивосток (UTC+10)": 10,
+  "Магадан (UTC+11)": 11,
+  "Камчатка (UTC+12)": 12
+};
+
+const getTzOffset = () => tzOffsets[localStorage.getItem('timezone') || "Москва (UTC+3)"] || 3;
+const shiftTime = (timeStr, diff) => {
+  if (!timeStr) return timeStr;
+  const [h, m] = timeStr.split(':');
+  let newH = (parseInt(h) + diff + 24) % 24;
+  return `${newH.toString().padStart(2, '0')}:${m}`;
+};
+
+const seed = { user: null, students: [], tutors: [], users: [], lessons: [] };
 let state = { page: "calendar", modal: null };
 const app = document.querySelector("#app");
 
@@ -26,7 +48,6 @@ const save = async () => {
     seed.lessons = data.lessons;
     if (data.users) seed.users = data.users;
   } catch (err) {
-    console.error("Failed to load state", err);
     if (err.message === "Не авторизован") { seed.user = null; render(); }
     throw err;
   }
@@ -47,8 +68,8 @@ function login() {
         <p class="sub">Войдите в свой аккаунт</p>
         <form class="form" id="login-form">
           <div class="field">
-            <label for="phone">Номер телефона</label>
-            <input id="phone" required placeholder="+7 (999) 123-45-67" />
+            <label for="login">Логин</label>
+            <input id="login" required placeholder="Введите логин" />
           </div>
           <div class="field">
             <label for="password">Пароль</label>
@@ -64,21 +85,17 @@ function login() {
     event.preventDefault();
     const btn = event.currentTarget.querySelector('button');
     const originalText = btn.textContent;
-    btn.textContent = "Вход...";
-    btn.disabled = true;
+    btn.textContent = "Вход..."; btn.disabled = true;
     try {
       const data = await api("/api/login", { 
         method: "POST", 
-        body: JSON.stringify({ phone: document.querySelector("#phone").value, password: document.querySelector("#password").value }) 
+        body: JSON.stringify({ login: document.querySelector("#login").value, password: document.querySelector("#password").value }) 
       });
-      seed.user = data.user;
-      state.page = "calendar";
-      await save(); 
-      render();
+      seed.user = data.user; state.page = "calendar";
+      await save(); render();
     } catch (error) { 
       document.querySelector("#login-error").textContent = error.message; 
-      btn.textContent = originalText;
-      btn.disabled = false;
+      btn.textContent = originalText; btn.disabled = false;
     }
   });
 }
@@ -91,6 +108,8 @@ function layout(content) {
   const roleLabels = { admin: "Мастер (Админ)", tutor: "Репетитор", student: "Ученик" };
   const isAdmin = seed.user.role === "admin";
   const isTutor = seed.user.role === "tutor" || isAdmin;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const tzOptions = Object.keys(tzOffsets).map(tz => `<option value="${tz}" ${localStorage.getItem('timezone') === tz ? 'selected' : (tz==="Москва (UTC+3)" && !localStorage.getItem('timezone') ? 'selected' : '')}>${tz}</option>`).join("");
 
   const navs = `
     ${navButton("calendar", "▦", "Календарь")}
@@ -105,7 +124,12 @@ function layout(content) {
         <div class="brand"><span class="brand-mark">Р</span> репет</div>
         <nav class="nav">${navs}</nav>
         <div class="sidebar-footer">
-          <button class="button ghost small" data-action="logout" style="width:100%; margin-top:10px">Выйти</button>
+          <div style="margin-bottom:12px">
+            <select id="app-timezone" class="input-small" style="width:100%; padding: 6px; border-radius:6px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-size:11px;">
+              ${tzOptions}
+            </select>
+          </div>
+          <button class="button ghost small" data-action="logout" style="width:100%">Выйти</button>
         </div>
       </aside>
       <main class="main">
@@ -115,6 +139,7 @@ function layout(content) {
             <h1>${state.page === "calendar" ? "Расписание" : state.page === "students" ? "Ученики" : state.page === "admin" ? "Пользователи" : "Финансы"}</h1>
           </div>
           <div class="user">
+            <button class="button ghost small" data-action="toggle-theme" title="Сменить тему">${isDark ? '☀️' : '🌙'}</button>
             <span class="user-name">${esc(seed.user.name)}</span>
             <span class="avatar">${esc(seed.user.initials)}</span>
           </div>
@@ -130,47 +155,34 @@ function calendarPage() {
   const monday = new Date(todayObj);
   monday.setDate(todayObj.getDate() - dayOfWeek + 1);
   const days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-  const dates = [];
-  const datesDisplay = [];
+  const dates = [], datesDisplay = [];
   const monthNames = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
     const dateStr = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
-    dates.push(dateStr);
-    datesDisplay.push(d.getDate().toString());
+    dates.push(dateStr); datesDisplay.push(d.getDate().toString());
     if (dateStr === today) days[i] = "Сегодня";
   }
   const hours = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
   const isTutor = seed.user.role === "tutor" || seed.user.role === "admin";
+  const diff = getTzOffset() - 3; // base is MSK (3)
 
   const getLessonName = (lesson) => {
-    if (seed.user.role === "student") {
-      const t = seed.tutors.find(x => x.id === lesson.tutorId);
-      return t ? t.name : "Урок";
-    }
-    const s = seed.students.find(x => x.id === lesson.studentId);
-    return s ? s.name : "Урок";
-  };
-
-  const getLessonSub = (lesson) => {
-    if (seed.user.role === "student") {
-      const t = seed.tutors.find(x => x.id === lesson.tutorId);
-      return "Репетитор" + (lesson.paid ? " · оплачено" : "");
-    }
-    const s = seed.students.find(x => x.id === lesson.studentId);
-    return (s?.subject || "") + (lesson.paid ? " · оплачено" : "");
+    if (seed.user.role === "student") return (seed.tutors.find(x => x.id === lesson.tutorId)?.name || "Урок");
+    return (seed.students.find(x => x.id === lesson.studentId)?.name || "Урок");
   };
 
   const gridCells = hours.map((hour) => `
     <div class="time">${hour}</div>
     ${dates.map((date) => {
-      const lesson = seed.lessons.find((item) => item.date === date && item.time === hour);
+      const dbHour = shiftTime(hour, -diff); // Find lesson in DB time
+      const lesson = seed.lessons.find((item) => item.date === date && item.time === dbHour);
       if (!lesson) return `<div class="slot" data-date="${date}" data-time="${hour}"></div>`;
       return `<div class="slot has-lesson">
                 <div class="lesson ${lesson.paid ? "green" : "orange"} shadow-hover" data-lesson="${lesson.id}">
                   <div class="lesson-name">${esc(getLessonName(lesson))}</div>
-                  <small>${lesson.duration} · ${esc(getLessonSub(lesson))}</small>
+                  <small>${lesson.duration}${lesson.paid ? " · оплачено" : ""}</small>
                 </div>
               </div>`;
     }).join("")}
@@ -196,10 +208,9 @@ function calendarPage() {
             <div class="mobile-lessons">
               ${dayLessons.map(lesson => `
                   <div class="mobile-lesson-card ${lesson.paid ? 'green' : 'orange'}">
-                    <div class="mobile-lesson-time">${lesson.time} <span class="mobile-lesson-duration">(${lesson.duration})</span></div>
+                    <div class="mobile-lesson-time">${shiftTime(lesson.time, diff)} <span class="mobile-lesson-duration">(${lesson.duration})</span></div>
                     <div class="mobile-lesson-details">
                       <strong>${esc(getLessonName(lesson))}</strong>
-                      <span class="mobile-lesson-subject">${esc(getLessonSub(lesson))}</span>
                     </div>
                     ${lesson.paid ? '<div class="mobile-lesson-badge paid">Оплачено</div>' : '<div class="mobile-lesson-badge pending">Ожидает</div>'}
                   </div>
@@ -211,26 +222,7 @@ function calendarPage() {
       ${seed.lessons.length === 0 ? `<div class="empty">На этой неделе нет уроков</div>` : ''}
     </div>`;
 
-  let statsHTML = '';
-  if (isTutor) {
-    const weekRevenue = seed.lessons.filter((l) => l.paid).reduce((sum, l) => sum + (seed.students.find((s) => s.id === l.studentId)?.rate || 0), 0);
-    const pendingRevenue = seed.lessons.filter((l) => l.held && !l.paid).reduce((sum, l) => sum + (seed.students.find((s) => s.id === l.studentId)?.rate || 0), 0);
-    statsHTML = `
-      <div class="stats">
-        <div class="card stat-card shadow-hover">
-          <div class="stat-label">Уроков сегодня</div><div class="stat-value">${seed.lessons.filter((l) => l.date === today).length}</div><div class="stat-detail">Всё по плану</div>
-        </div>
-        <div class="card stat-card shadow-hover">
-          <div class="stat-label">Доход за неделю</div><div class="stat-value">${money(weekRevenue)}</div><div class="stat-detail">Оплачено</div>
-        </div>
-        <div class="card stat-card shadow-hover">
-          <div class="stat-label">Ожидают оплаты</div><div class="stat-value">${money(pendingRevenue)}</div><div class="stat-detail" style="color:var(--orange)">По проведенным урокам</div>
-        </div>
-      </div>`;
-  }
-
   return `
-    ${statsHTML}
     <section class="card schedule-card">
       <div class="section-head">
         <h2>Эта неделя</h2>
@@ -255,7 +247,7 @@ function studentsPage() {
               <div class="person-avatar">${esc(student.initials)}</div>
               <div>
                 <div class="person-name">${esc(student.name)}</div>
-                <div class="person-meta">${esc(student.grade ? student.grade + ' · ' : '')}${esc(student.subject)} · ${money(student.rate)}/час<br/>Тел: ${esc(student.phone)}${student.telegram ? ' · ' + esc(student.telegram) : ''}</div>
+                <div class="person-meta">${esc(student.grade ? student.grade + ' · ' : '')}${esc(student.subject)} · ${money(student.rate)}/час<br/>Логин: ${esc(student.login)}${student.telegram ? ' · ' + esc(student.telegram) : ''}</div>
               </div>
             </div>
             <button class="button ghost small action-btn" data-edit-user="${student.id}">Изменить</button>
@@ -279,7 +271,7 @@ function adminPage() {
               <div class="person-avatar" style="background:#fff0f2; color:var(--red)">${esc(tutor.initials)}</div>
               <div>
                 <div class="person-name">${esc(tutor.name)} ${tutor.role==='admin'?'(Админ)':''}</div>
-                <div class="person-meta">Тел: ${esc(tutor.phone)}</div>
+                <div class="person-meta">Логин: ${esc(tutor.login)}</div>
               </div>
             </div>
             <div style="display:flex;gap:8px;">
@@ -290,7 +282,6 @@ function adminPage() {
         `).join("")}
       </div>
     </section>
-    
     <section class="card">
       <div class="section-head">
         <h2>Все ученики <span class="muted-count">(${seed.students.length})</span></h2>
@@ -303,7 +294,7 @@ function adminPage() {
               <div class="person-avatar">${esc(student.initials)}</div>
               <div>
                 <div class="person-name">${esc(student.name)}</div>
-                <div class="person-meta">${esc(student.grade ? student.grade + ' · ' : '')}${esc(student.subject)} · ${money(student.rate)}/час<br/>Тел: ${esc(student.phone)}${student.telegram ? ' · ' + esc(student.telegram) : ''}</div>
+                <div class="person-meta">${esc(student.grade ? student.grade + ' · ' : '')}${esc(student.subject)} · ${money(student.rate)}/час<br/>Логин: ${esc(student.login)}${student.telegram ? ' · ' + esc(student.telegram) : ''}</div>
               </div>
             </div>
             <div style="display:flex;gap:8px;">
@@ -319,34 +310,9 @@ function adminPage() {
 function financePage() {
   const held = seed.lessons.filter((lesson) => lesson.held);
   const total = held.reduce((sum, lesson) => sum + (seed.students.find((student) => student.id === lesson.studentId)?.rate || 0), 0);
-  
   return `
     <section class="stats">
-      <div class="card stat-card shadow-hover">
-        <div class="stat-label">Доход за день</div><div class="stat-value">${money(total)}</div><div class="stat-detail">По проведенным</div>
-      </div>
-      <div class="card stat-card shadow-hover">
-        <div class="stat-label">Доход за месяц</div><div class="stat-value">${money(total * 4)}</div><div class="stat-detail">Примерно</div>
-      </div>
-    </section>
-    <section class="card">
-      <div class="section-head"><h2>Последние уроки</h2></div>
-      <div class="list">
-        ${held.length ? held.map((lesson) => { 
-          const student = seed.students.find((s) => s.id === lesson.studentId); 
-          return `
-            <div class="row shadow-hover-row">
-              <div class="finance-info">
-                <div class="person-name">${esc(student?.name)}</div>
-                <div class="person-meta">${formatDate(lesson.date)} · ${lesson.time} · ${lesson.duration}</div>
-              </div>
-              <div class="finance-status">
-                <div class="price">${money(student?.rate || 0)}</div>
-                <span class="badge ${lesson.paid ? "paid" : "pending"}">${lesson.paid ? "Оплачено" : "Ожидает"}</span>
-              </div>
-            </div>`; 
-        }).join("") : `<div class="empty">Проведённых уроков пока нет.</div>`}
-      </div>
+      <div class="card stat-card shadow-hover"><div class="stat-label">Доход</div><div class="stat-value">${money(total)}</div><div class="stat-detail">По проведенным</div></div>
     </section>`;
 }
 
@@ -354,27 +320,20 @@ function modal() {
   if (!state.modal) return "";
   const type = state.modal.type;
   const editing = (type === "student" || type === "tutor") && state.modal.id;
+  const diff = getTzOffset() - 3;
   
   if (type === "lesson") {
     const studentOptions = seed.students.map((item) => `<option value="${item.id}">${esc(item.name)}</option>`).join("");
     return `
       <div class="modal-backdrop fade-in" id="modal-backdrop">
         <section class="modal slide-up">
-          <div class="modal-head">
-            <h2>Новый урок</h2><button class="close" data-action="close">×</button>
-          </div>
+          <div class="modal-head"><h2>Новый урок</h2><button class="close" data-action="close">×</button></div>
           <form class="form" id="modal-form">
             <input type="hidden" name="type" value="lesson" />
-            <div class="field">
-              <label>Ученик</label>
-              <select name="studentId" required>${studentOptions || '<option disabled selected>Сначала добавьте ученика</option>'}</select>
-            </div>
+            <div class="field"><label>Ученик</label><select name="studentId" required>${studentOptions || '<option disabled selected>Сначала добавьте ученика</option>'}</select></div>
             <div class="field"><label>Дата</label><input name="date" type="date" required value="${state.modal.date || today}" /></div>
-            <div class="field"><label>Время</label><input name="time" type="time" required value="${state.modal.time || '10:00'}" /></div>
-            <div class="field">
-              <label>Длительность</label>
-              <select name="duration"><option>45 минут</option><option selected>1 час</option><option>1.5 часа</option><option>2 часа</option></select>
-            </div>
+            <div class="field"><label>Время (ваше местное)</label><input name="time" type="time" required value="${state.modal.time || shiftTime('10:00', diff)}" /></div>
+            <div class="field"><label>Длительность</label><select name="duration"><option>45 минут</option><option selected>1 час</option><option>1.5 часа</option><option>2 часа</option></select></div>
             <div class="checkbox-field"><label class="custom-checkbox"><input name="held" type="checkbox" /><span class="checkmark"></span> Урок уже проведён</label></div>
             <div class="checkbox-field"><label class="custom-checkbox"><input name="paid" type="checkbox" /><span class="checkmark"></span> Оплата получена</label></div>
             <div class="form-actions"><button type="button" class="button ghost" data-action="close">Отмена</button><button class="button primary" ${!studentOptions ? 'disabled' : ''}>Добавить</button></div>
@@ -388,19 +347,16 @@ function modal() {
     return `
       <div class="modal-backdrop fade-in" id="modal-backdrop">
         <section class="modal slide-up">
-          <div class="modal-head">
-            <h2>${editing ? 'Изменить профиль' : type === 'student' ? 'Новый ученик' : 'Новый репетитор'}</h2>
-            <button class="close" data-action="close">×</button>
-          </div>
+          <div class="modal-head"><h2>${editing ? 'Изменить профиль' : type === 'student' ? 'Новый ученик' : 'Новый репетитор'}</h2><button class="close" data-action="close">×</button></div>
           <form class="form" id="modal-form">
             <input type="hidden" name="type" value="user" />
             <input type="hidden" name="role" value="${type}" />
             <div class="field"><label>Имя и фамилия</label><input name="name" required value="${esc(user?.name || "")}" placeholder="Иван Иванов" /></div>
-            <div class="field"><label>Телефон для входа</label><input name="phone" required value="${esc(user?.phone || "")}" placeholder="+7 (999) 000-00-00" /></div>
+            <div class="field"><label>Логин для входа</label><input name="login" value="${esc(user?.login || "")}" placeholder="Например, ivan_2026" /></div>
             <div class="field">
               <label>Пароль</label>
               <div style="display:flex; gap:8px;">
-                <input name="password" id="user-password-input" ${editing?'':'required'} value="${editing?esc(user?.password || ""):""}" placeholder="${editing?'Оставьте пустым чтобы не менять':'Пароль'}" style="flex:1" />
+                <input name="password" id="user-password-input" value="${editing?esc(user?.password || ""):""}" placeholder="${editing?'Оставьте пустым чтобы не менять':'Пароль'}" style="flex:1" />
                 <button type="button" class="button ghost" onclick="document.getElementById('user-password-input').value = Math.random().toString(36).slice(-8); return false;">Сгенерировать</button>
               </div>
             </div>
@@ -410,7 +366,7 @@ function modal() {
               <div class="field"><label>Предмет</label><input name="subject" required value="${esc(user?.subject || "")}" placeholder="Математика" /></div>
               <div class="field"><label>Ставка за час, ₽</label><input name="rate" required type="number" min="0" value="${user?.rate || ""}" /></div>
             ` : ''}
-            <div class="field"><label>Заметки (опционально)</label><textarea name="notes" rows="2">${esc(user?.notes || "")}</textarea></div>
+            <div class="field"><label>Заметки</label><textarea name="notes" rows="2">${esc(user?.notes || "")}</textarea></div>
             <div class="form-actions"><button type="button" class="button ghost" data-action="close">Отмена</button><button class="button primary">Сохранить</button></div>
           </form>
         </section>
@@ -430,6 +386,11 @@ function render() {
   
   app.innerHTML = layout(content) + modal();
   
+  app.querySelector("#app-timezone")?.addEventListener("change", (e) => {
+    localStorage.setItem('timezone', e.target.value);
+    render();
+  });
+
   app.querySelectorAll("[data-page]").forEach((button) => button.addEventListener("click", () => { state.page = button.dataset.page; render(); }));
   app.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", async () => {
     const action = button.dataset.action;
@@ -437,6 +398,12 @@ function render() {
     if (action === "add-tutor") state.modal = { type: "tutor" };
     if (action === "add-lesson") state.modal = { type: "lesson" };
     if (action === "close") state.modal = null;
+    if (action === "toggle-theme") {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+      localStorage.setItem('theme', isDark ? 'light' : 'dark');
+      render();
+    }
     if (action === "logout") { seed.user = null; state.page = "calendar"; }
     render();
   }));
@@ -449,12 +416,8 @@ function render() {
   }));
 
   app.querySelectorAll("[data-delete-user]").forEach((button) => button.addEventListener("click", async () => { 
-    if (!confirm("Вы уверены, что хотите удалить этого пользователя? Это действие удалит и все его уроки.")) return;
-    const id = button.dataset.deleteUser;
-    try {
-      await api(`/api/users/${id}`, { method: "DELETE" });
-      await save(); render();
-    } catch (e) { alert(e.message); }
+    if (!confirm("Вы уверены? Удалятся и все уроки.")) return;
+    try { await api(`/api/users/${button.dataset.deleteUser}`, { method: "DELETE" }); await save(); render(); } catch (e) { alert(e.message); }
   }));
 
   if (seed.user.role !== "student") {
@@ -472,30 +435,28 @@ function render() {
   app.querySelector("#modal-form")?.addEventListener("submit", async (event) => {
     event.preventDefault(); 
     const btn = event.currentTarget.querySelector('.button.primary');
-    const originalText = btn.textContent;
-    btn.textContent = "Сохранение..."; btn.disabled = true;
+    const originalText = btn.textContent; btn.textContent = "Сохранение..."; btn.disabled = true;
 
     try {
       const data = Object.fromEntries(new FormData(event.currentTarget));
       if (data.type === "user") {
-        const entry = { name: data.name, phone: data.phone, password: data.password, role: data.role, notes: data.notes };
+        const entry = { name: data.name, login: data.login, password: data.password, role: data.role, notes: data.notes };
         if (data.role === "student") { entry.subject = data.subject; entry.telegram = data.telegram; entry.grade = data.grade; entry.rate = data.rate; }
-        
         if (state.modal.id) await api(`/api/users/${state.modal.id}`, { method: "PUT", body: JSON.stringify(entry) });
         else await api("/api/users", { method: "POST", body: JSON.stringify(entry) });
       } else if (data.type === "lesson") {
+        const diff = getTzOffset() - 3;
         await api("/api/lessons", { method: "POST", body: JSON.stringify({ 
-          studentId: data.studentId, tutorId: seed.user.id, date: data.date, time: data.time, duration: data.duration, held: data.held === "on", paid: data.paid === "on" 
+          studentId: data.studentId, tutorId: seed.user.id, date: data.date, 
+          time: shiftTime(data.time, -diff), // save in DB timezone (MSK)
+          duration: data.duration, held: data.held === "on", paid: data.paid === "on" 
         })});
       }
       await save(); state.modal = null; render();
-    } catch (err) {
-      alert(err.message || "Ошибка при сохранении");
-      btn.textContent = originalText; btn.disabled = false;
-    }
+    } catch (err) { alert(err.message); btn.textContent = originalText; btn.disabled = false; }
   });
 }
 
 save().then(render).catch((error) => { 
-  app.innerHTML = `<main class="login"><section class="login-card"><h1>Сервер недоступен</h1><p class="sub">${esc(error.message)}<br />Убедитесь, что сервер запущен.</p></section></main>`; 
+  app.innerHTML = `<main class="login"><section class="login-card"><h1>Сервер недоступен</h1><p class="sub">${esc(error.message)}</p></section></main>`; 
 });

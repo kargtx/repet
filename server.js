@@ -10,12 +10,12 @@ const PUBLIC_FILES = { "/": "index.html", "/index.html": "index.html", "/styles.
 function defaultDatabase() {
   return {
     users: [
-      { id: "1", phone: "+79376419123", password: "Itsjoke775", name: "Гарифуллин Карим", initials: "ГК", role: "admin" },
-      { id: "2", phone: "", password: "", name: "Николай", initials: "Н", role: "student", subject: "", rate: 1500, notes: "" },
-      { id: "3", phone: "", password: "", name: "Ксения", initials: "К", role: "student", subject: "", rate: 1200, notes: "" },
-      { id: "4", phone: "", password: "", name: "Маша", initials: "М", role: "student", subject: "", rate: 1500, notes: "" },
-      { id: "5", phone: "", password: "", name: "Роман", initials: "Р", role: "student", subject: "", rate: 1500, notes: "" },
-      { id: "6", phone: "", password: "", name: "Тимофей", initials: "Т", role: "student", subject: "", rate: 1500, notes: "" }
+      { id: "1", login: "+79376419123", password: "Itsjoke775", name: "Гарифуллин Карим", initials: "ГК", role: "admin" },
+      { id: "2", login: "", password: "", name: "Николай", initials: "Н", role: "student", subject: "", rate: 1500, notes: "" },
+      { id: "3", login: "", password: "", name: "Ксения", initials: "К", role: "student", subject: "", rate: 1200, notes: "" },
+      { id: "4", login: "", password: "", name: "Маша", initials: "М", role: "student", subject: "", rate: 1500, notes: "" },
+      { id: "5", login: "", password: "", name: "Роман", initials: "Р", role: "student", subject: "", rate: 1500, notes: "" },
+      { id: "6", login: "", password: "", name: "Тимофей", initials: "Т", role: "student", subject: "", rate: 1500, notes: "" }
     ],
     lessons: []
   };
@@ -74,18 +74,10 @@ const server = http.createServer(async (request, response) => {
     }
 
     if (request.method === "POST" && url.pathname === "/api/login") {
-      const { phone, password } = await getBody(request);
+      const { login, password } = await getBody(request);
       const database = readDatabase();
-      let normalizedPhone = String(phone || "").replace(/\D/g, "");
-      if (normalizedPhone.length === 11 && normalizedPhone.startsWith("8")) {
-        normalizedPhone = "7" + normalizedPhone.slice(1);
-      }
-      const user = database.users.find((item) => {
-        let itemPhone = item.phone.replace(/\D/g, "");
-        if (itemPhone.length === 11 && itemPhone.startsWith("8")) itemPhone = "7" + itemPhone.slice(1);
-        return itemPhone === normalizedPhone && item.password === password;
-      });
-      return user ? send(response, 200, { user: { id: user.id, name: user.name, initials: user.initials, role: user.role } }) : send(response, 401, { error: "Неверный номер телефона или пароль" });
+      const user = database.users.find((item) => item.login === login && item.password === password);
+      return user ? send(response, 200, { user: { id: user.id, name: user.name, initials: user.initials, role: user.role } }) : send(response, 401, { error: "Неверный логин или пароль" });
     }
 
     if (request.method === "POST" && url.pathname === "/api/users") {
@@ -99,7 +91,7 @@ const server = http.createServer(async (request, response) => {
 
       const user = { 
         id: id(), 
-        phone: String(input.phone || "").trim(),
+        login: String(input.login || "").trim(),
         password: String(input.password || "").trim(),
         name: String(input.name || "").trim(), 
         initials: initials(input.name),
@@ -110,7 +102,7 @@ const server = http.createServer(async (request, response) => {
         rate: input.role === "student" ? Number(input.rate) : undefined, 
         notes: String(input.notes || "").trim() 
       };
-      if (!user.name || !user.phone || !user.password) return send(response, 400, { error: "Заполните обязательные поля" });
+      if (!user.name || !user.login || !user.password) return send(response, 400, { error: "Заполните обязательные поля" });
       
       database.users.push(user); 
       writeDatabase(database); 
@@ -126,7 +118,7 @@ const server = http.createServer(async (request, response) => {
       const input = await getBody(request);
       user.name = String(input.name || "").trim();
       user.initials = initials(user.name);
-      if (input.phone) user.phone = String(input.phone).trim();
+      if (input.login) user.login = String(input.login).trim();
       if (input.password) user.password = String(input.password).trim();
       if (user.role === "student") {
         user.subject = String(input.subject || "").trim();

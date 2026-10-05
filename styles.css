@@ -247,3 +247,76 @@ h2 { margin: 0; font-size: 22px; letter-spacing: -0.03em; font-weight: 700; }
   .login-card { padding: 32px 24px; border: none; box-shadow: none; border-radius: 0; background: transparent; }
   .login { background: white; align-items: flex-start; padding-top: 10vh; }
 }
+
+/* Dark Theme */
+[data-theme="dark"] {
+  --ink: #f0f2f8;
+  --muted: #8b96ad;
+  --line: #2a3441;
+  --surface: #1e2634;
+  --background: #131924;
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+  --primary-light: rgba(109, 93, 252, 0.15);
+  --green-light: rgba(38, 180, 126, 0.15);
+  --orange-light: rgba(245, 155, 77, 0.15);
+}
+
+[data-theme="dark"] .calendar-header-corner, 
+[data-theme="dark"] .day-head {
+  background: #1b2330 !important;
+}
+
+[data-theme="dark"] .slot:hover:not(.has-lesson), 
+[data-theme="dark"] .nav button:hover:not(.active),
+[data-theme="dark"] .shadow-hover-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .modal-backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .field input, 
+[data-theme="dark"] .field select, 
+[data-theme="dark"] .field textarea,
+[data-theme="dark"] .custom-checkbox .checkmark {
+  background: #1b2330;
+  color: #f0f2f8;
+}
+
+[data-theme="dark"] .login-card {
+  background: var(--surface);
+}
+
+[data-theme="dark"] .mobile-nav {
+  background: rgba(30, 38, 52, 0.9);
+}
+
+[data-theme="dark"] .lesson.green {
+  background: var(--green-light);
+  color: #4ade80;
+}
+
+[data-theme="dark"] .lesson.orange {
+  background: var(--orange-light);
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .badge.paid { color: #4ade80; }
+[data-theme="dark"] .badge.pending { color: #fbbf24; }
+
+[data-theme="dark"] .person-avatar {
+  background: var(--primary-light);
+  color: #a59cff;
+}
+
+[data-theme="dark"] .button.ghost {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .button.ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
